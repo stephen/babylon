@@ -183,7 +183,7 @@
                   }
                 },
                 {
-                  "type": "RestProperty",
+                  "type": "RestElement",
                   "start": 12,
                   "end": 16,
                   "loc": {

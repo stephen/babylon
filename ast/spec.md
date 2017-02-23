@@ -1,6 +1,7 @@
 These are the core Babylon AST node types.
 
 - [Node objects](#node-objects)
+- [Changes](#changes)
 - [Identifier](#identifier)
 - [Literals](#literals)
   - [RegExpLiteral](#regexpliteral)
@@ -56,8 +57,6 @@ These are the core Babylon AST node types.
     - [ObjectMember](#objectmember)
       - [ObjectProperty](#objectproperty)
       - [ObjectMethod](#objectmethod)
-  - [RestProperty](#restproperty)
-  - [SpreadProperty](#spreadproperty)
   - [FunctionExpression](#functionexpression)
   - [Unary operations](#unary-operations)
     - [UnaryExpression](#unaryexpression)
@@ -139,6 +138,22 @@ interface Position {
   column: number; // >= 0
 }
 ```
+
+# Changes
+
+### Babylon 7
+
+Flow: Node renamed from `ExistentialTypeParam` to `ExistsTypeAnnotation` [#322](https://github.com/babel/babylon/pull/322)
+  
+Flow: Node renamed from `NumericLiteralTypeAnnotation` to `NumberLiteralTypeAnnotation` [babel/babylon#332](https://github.com/babel/babylon/pull/332)
+  
+Flow: Node `Variance` which replaces the string value of the `variance` field on several nodes [babel/babylon#333](https://github.com/babel/babylon/pull/333)
+
+Flow: `ObjectTypeIndexer` location info matches Flow's better [babel/babylon#228](https://github.com/babel/babylon/pull/228)
+  
+Node `ForAwaitStatement` has been removed [#349](https://github.com/babel/babylon/pull/349) in favor of modifying `ForOfStatement`
+
+`RestProperty` and `SpreadProperty` have been dropped in favor of `RestElement` and `SpreadElement`.
 
 # Identifier
 
@@ -651,7 +666,7 @@ An array expression.
 ```js
 interface ObjectExpression <: Expression {
   type: "ObjectExpression";
-  properties: [ ObjectProperty | ObjectMethod | SpreadProperty ];
+  properties: [ ObjectProperty | ObjectMethod | SpreadElement ];
 }
 ```
 
@@ -683,24 +698,6 @@ interface ObjectProperty <: ObjectMember {
 interface ObjectMethod <: ObjectMember, Function {
   type: "ObjectMethod";
   kind: "get" | "set" | "method";
-}
-```
-
-## RestProperty
-
-```js
-interface RestProperty <: Node {
-    type: "RestProperty";
-    argument: Expression;
-}
-```
-
-## SpreadProperty
-
-```js
-interface SpreadProperty <: Node {
-    type: "SpreadProperty";
-    argument: Expression;
 }
 ```
 
@@ -970,7 +967,7 @@ interface AssignmentProperty <: ObjectProperty {
 
 interface ObjectPattern <: Pattern {
   type: "ObjectPattern";
-  properties: [ AssignmentProperty | RestProperty ];
+  properties: [ AssignmentProperty | RestPattern ];
 }
 ```
 

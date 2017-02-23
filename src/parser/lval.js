@@ -34,8 +34,8 @@ pp.toAssignable = function (node, isBinding, contextDescription) {
         this.toAssignable(node.value, isBinding, contextDescription);
         break;
 
-      case "SpreadProperty":
-        node.type = "RestProperty";
+      case "SpreadElement":
+        node.type = "RestElement";
         break;
 
       case "ArrayExpression":
@@ -244,10 +244,6 @@ pp.checkLVal = function (expr, isBinding, checkClashes, contextDescription) {
 
     case "AssignmentPattern":
       this.checkLVal(expr.left, isBinding, checkClashes, "assignment pattern");
-      break;
-
-    case "RestProperty":
-      this.checkLVal(expr.argument, isBinding, checkClashes, "rest property");
       break;
 
     case "RestElement":
