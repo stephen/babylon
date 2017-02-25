@@ -14,9 +14,11 @@ import "./tokenizer/context";
 import estreePlugin from "./plugins/estree";
 import flowPlugin from "./plugins/flow";
 import jsxPlugin from "./plugins/jsx";
+import typescriptPlugin from "./plugins/typescript";
 plugins.estree = estreePlugin;
 plugins.flow = flowPlugin;
 plugins.jsx = jsxPlugin;
+plugins.typescript = typescriptPlugin;
 
 export function parse(input, options) {
   return new Parser(options, input).parse();
