@@ -5,6 +5,7 @@ import Parser from "../parser";
 // XXX: targeting ts1.8 grammar:
 // https://github.com/Microsoft/TypeScript/blob/master/doc/spec.md#A
 // attempt to copy words/identifiers from flow plugin where possible
+// also see https://github.com/babel/babylon/issues/320
 const pp = Parser.prototype;
 
 // pp.tsParseDeclareInterface = function (node) {
@@ -33,7 +34,7 @@ pp.tsParseInterface = function(node) {
   // XXX: handle generics (TypeParameters), i.e. interface<T> A { ... }
   node.typeParameters = null;
   if (this.isRelational("<")) {
-    node.typeParameters = this.tsParseTypeParameterDeclaration();
+    node.typeParameters = this.tsParseTypeParameterList();
   }
 
   // XXX: handle InterfaceExtendsClause
@@ -46,8 +47,9 @@ pp.tsParseInterface = function(node) {
   return this.finishNode(node, "InterfaceDeclaration");
 };
 
-// "TypeParameters" acc. spec
-pp.tsParseTypeParameterDeclaration = function() {
+// via flowParseTypeParameterDeclaration.
+// From the spec: TypeParameters.
+pp.tsParseTypeParameterList = function() {
   // XXX: inType?
   const node = this.startNode();
   node.params = [];
@@ -61,7 +63,7 @@ pp.tsParseTypeParameterDeclaration = function() {
   } while (!this.isRelational(">"));
   this.expectRelational(">");
 
-  return this.finishNode(node, "TypeParameterDeclaration");
+  return this.finishNode(node, "TypeParameterList");
 };
 
 const strictModeReservedWords = [
