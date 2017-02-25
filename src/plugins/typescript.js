@@ -39,12 +39,84 @@ pp.tsParseInterface = function(node) {
 
   // XXX: handle InterfaceExtendsClause
   node.extends = [];
+  if (this.eat(tt._extends)) {
+    do {
+      node.extends.push(this.tsParseHeritageClause());
+    } while (this.eat(tt.comma));
+  }
 
   // XXX: handle ObjectType
   node.body = null;
   console.log(node);
 
   return this.finishNode(node, "InterfaceDeclaration");
+};
+
+// parses the latter half of `extends Something`.
+// caller must remove `extends` themself.
+// from: flowParseInterfaceExtends
+pp.tsParseHeritageClause = function() {
+  const node = this.startNode();
+  node.id = this.tsParseTypeName();
+
+  // XXX: it seems like flow calls ts.TypeArguments (the <T> part)
+  // flow.TypeParamterInstantiation, which are concrete type refs that
+  // cannot be newly declared generics. Different from ts.TypeParameter.
+
+  // extended type can be generic and have a TypeArguments, i.e. `extends Something<T>`
+  if (this.isRelational("<")) {
+    node.typeArguments = this.tsParseTypeArgumentList();
+  } else {
+    node.typeArguments = null;
+  }
+
+  // XXX: flow calls these InterfaceExtends
+  return this.finishNode(node, "HeritageClause");
+};
+
+// stuff like `X.G` within `var x: X.G<T>`
+// XXX: Flow calls these QualifiedTypeIdentifier;
+// official ts ast calls these PropertyAccessExpression,
+// while the spec grammar calls them TypeName.
+//
+// The ts ast also calls a.s()'s expression a PropertyAccessExpression,
+// maybe we should just call these MemberExpression?
+// typescript-eslint-parser also converts these into MemberExpression.
+//
+// We can't just call pp.parseExprSubscripts because it also attempts to
+// parse things like a[c] which are valid MemberExpression's, but not
+// valid typescript. type names.
+//
+// This is taken from flowParseQualifiedTypeIdentifier.
+pp.tsParseTypeName = function() {
+  let node = this.parseIdentifier();
+
+  while (this.eat(tt.dot)) {
+    const node2 = this.startNode();
+    node2.object = node;
+    node2.property = this.parseIdentifier();
+    node = this.finishNode(node2, "MemberExpression");
+  }
+
+  return node;
+};
+
+// similar to flowParseTypeParameterInstantiation
+pp.tsParseTypeArgumentList = function() {
+  // XXX: inType?
+  const node = this.startNode();
+  node.arguments = [];
+
+  this.expectRelational("<");
+  while (!this.isRelational(">")) {
+    node.arguments.push(this.tsParseType());
+    if (!this.isRelational(">")) {
+      this.expect(tt.comma);
+    }
+  }
+  this.expectRelational(">");
+
+  return this.finishNode(node, "TypeArgumentList");
 };
 
 // via flowParseTypeParameterDeclaration.
@@ -139,6 +211,7 @@ pp.tsParseType = function() {
   //
   //   ParenthesizedType:
   //    ( Type )
+  this.next(); // skip it? this will fail for anything more complex than a name
   return this.finishNode(node, "SomeTypeAnnotation")
 }
 
