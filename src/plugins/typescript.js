@@ -88,8 +88,8 @@ pp.tsParseHeritageClause = function() {
 // valid typescript. type names.
 //
 // This is taken from flowParseQualifiedTypeIdentifier.
-pp.tsParseTypeName = function() {
-  let node = this.parseIdentifier();
+pp.tsParseTypeName = function(identifier) {
+  let node = identifier || this.parseIdentifier();
 
   while (this.eat(tt.dot)) {
     const node2 = this.startNode();
@@ -181,12 +181,65 @@ pp.tsParseTypeParameter = function() {
   }
 
   return this.finishNode(node, "TypeParameter");
+};
+
+pp.tsParsePredefinedType = function(node, identifier) {
+  switch (identifier.name) {
+    case "any":
+      // XXX: flow.AnyTypeAnnotation
+      return this.finishNode(node, "AnyKeyword");
+
+    case "number":
+      // XXX: flow.NumberTypeAnnotation
+      return this.finishNode(node, "NumberKeyword");
+
+    case "boolean":
+      // XXX: flow.BooleanTypeAnnotation
+      return this.finishNode(node, "BooleanKeyword");
+
+    case "string":
+      // XXX: flow.StringTypeAnnotation
+      return this.finishNode(node, "StringKeyword");
+
+    case "symbol":
+      // XXX: does not exist in flow
+      return this.finishNode(node, "SymbolKeyword");
+
+    case "void":
+      // XXX: flow.VoidTypeAnnotation
+      return this.finishNode(node, "VoidKeyword");
+
+    default:
+      return null;
+  }
+};
+
+// XXX: flowParseGenericType
+pp.tsParseTypeReference = function(node, identifier) {
+  node.typeArguments = null;
+  node.id = this.tsParseTypeName(identifier);
+
+  if (this.isRelational("<")) {
+    node.typeArguments = this.tsParseTypeArgumentList();
+  }
+
+  // XXX: flow.GenericTypeAnnotation
+  return this.finishNode(node, "TypeReference");
+};
+
+pp.tsParsePrimaryType = function() {
+  const node = this.startNode();
+  switch (this.state.type) {
+    case tt.name:
+      const identifier = this.parseIdentifier();
+      return this.tsParsePredefinedType(node, identifier) || this.tsParseTypeReference(node, identifier);
+  }
 }
 
 pp.tsParseType = function() {
-  const node = this.startNode();
+  return this.tsParsePrimaryType();
   // should handle...
-  //     Type:
+  //   Type:
   //    UnionOrIntersectionOrPrimaryType
   //    FunctionType
   //    ConstructorType
@@ -211,8 +264,6 @@ pp.tsParseType = function() {
   //
   //   ParenthesizedType:
   //    ( Type )
-  this.next(); // skip it? this will fail for anything more complex than a name
-  return this.finishNode(node, "SomeTypeAnnotation")
 }
 
 export default function (instance) {
