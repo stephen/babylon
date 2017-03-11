@@ -245,12 +245,23 @@ pp.tsParseObjectType = function() {
   while (!this.match(tt.braceR)) {
     if (this.match(tt.bracketL)) {
       nodeStart.members.push(this.tsParseObjectTypeIndexSignature());
+    } else if (this.match(tt._new)) {
+      nodeStart.members.push(this.tsParseObjectTypeConstructorSignature());
+      break;
     }
   }
   this.expect(tt.braceR);
 
   // XXX: ObjectTypeAnnotation
   return this.finishNode(nodeStart, "TypeLiteral");
+};
+
+pp.tsParseObjectTypeConstructorSignature = function() {
+  const node = this.startNode();
+  this.expect(tt._new);
+
+  // looks like: new <A, B>(A, c): B;
+  return this.finishNode(node, "ConstructSignature");
 };
 
 pp.tsParseObjectTypeIndexSignature = function() {
