@@ -314,6 +314,10 @@ pp.tsParsePrimaryType = function() {
       return this.tsParsePredefinedType(node, identifier) || this.tsParseTypeReference(node, identifier);
     case tt.braceL:
       return this.tsParseObjectType();
+    case tt._this:
+      // XXX: flow ThisTypeAnnotation
+      this.expect(tt._this);
+      return this.finishNode(node, "ThisType");
   }
 };
 
