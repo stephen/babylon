@@ -306,6 +306,21 @@ pp.tsEatObjectTypeSemicolon = function() {
   }
 };
 
+pp.tsParseTupleType = function(node) {
+  this.expect(tt.bracketL);
+  node.elementTypes = [];
+
+  while (!this.match(tt.bracketR)) {
+    node.elementTypes.push(this.tsParseType());
+    if (!this.match(tt.bracketR)) {
+      this.expect(tt.comma);
+    }
+  }
+  this.expect(tt.bracketR);
+  this.tsEatObjectTypeSemicolon();
+  return this.finishNode(node, "TupleType");
+};
+
 pp.tsParsePrimaryType = function() {
   const node = this.startNode();
   switch (this.state.type) {
@@ -318,6 +333,8 @@ pp.tsParsePrimaryType = function() {
       // XXX: flow ThisTypeAnnotation
       this.expect(tt._this);
       return this.finishNode(node, "ThisType");
+    case tt.bracketL:
+      return this.tsParseTupleType(node);
   }
 };
 
