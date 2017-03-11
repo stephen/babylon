@@ -349,4 +349,17 @@ export default function (instance) {
       return inner.call(this, node, expr);
     };
   });
+
+  // parse flow type annotations on variable declarator heads - let foo: string = bar
+  instance.extend("parseVarHead", function (inner) {
+    return function(decl) {
+      inner.call(this, decl);
+      if (this.eat(tt.colon)) {
+        // XXX: ts calls this the `type` on the VariableDeclaration,
+        // but babylon already uses `type` to mean the node type.
+        decl.id.typeAnnotation = this.tsParseType();
+        this.finishNode(decl.id, decl.id.type);
+      }
+    };
+  });
 }
