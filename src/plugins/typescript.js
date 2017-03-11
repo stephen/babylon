@@ -227,14 +227,84 @@ pp.tsParseTypeReference = function(node, identifier) {
   return this.finishNode(node, "TypeReference");
 };
 
+pp.tsParseObjectType = function() {
+  // XXX: inType?
+
+  const nodeStart = this.startNode();
+  this.expect(tt.braceL);
+
+  // flow splits this into callProperties, properties, and indexers, but
+  // the TS compiler puts them into a single property
+  nodeStart.members = [];
+
+  // PropertySignature `name?: TypeAnnotation`
+  // CallSignature `<A, B>(a, b): T`
+  // ConstructSignature `new <A, B>(a, b) T`
+  // IndexSignature `[name: string]: number`
+  // MethodSignature `name?: CallSignature`
+  while (!this.match(tt.braceR)) {
+    if (this.match(tt.bracketL)) {
+      nodeStart.members.push(this.tsParseObjectTypeIndexSignature());
+    }
+  }
+  this.expect(tt.braceR);
+
+  // XXX: ObjectTypeAnnotation
+  return this.finishNode(nodeStart, "TypeLiteral");
+};
+
+pp.tsParseObjectTypeIndexSignature = function() {
+  const node = this.startNode();
+  node.parameters = [];
+
+  const paramNode = this.startNode();
+
+  this.expect(tt.bracketL);
+  // XXX: flow calls this id / key
+  paramNode.name = this.parseIdentifier();
+  this.expect(tt.colon);
+
+  // XXX: ts compiler calls this `type`, but
+  // babylon uses type to mean the node's type.
+  // `key` is the flow terminology. (this is also
+  // inconsistent with `typeAnnotation` below...)
+  paramNode.key = this.tsParseType();
+  if (["StringKeyword", "NumberKeyword"].indexOf(paramNode.key.type) === -1) {
+    this.raise(paramNode.key.start, "Object indexer can only have string or number type");
+  }
+
+  // XXX: flow does not have this level of indirection. the parameters live
+  // directly on the ObjectTypeIndexed as id / key / value
+  node.parameters.push(this.finishNode(paramNode, "Parameter"));
+  this.expect(tt.bracketR);
+  this.expect(tt.colon); // XXX: flow handles this with flowParseTypeInitialiser
+
+  // XXX: again, ts calls this `type`, but that overloads the word
+  // in babylon. flow calls this `value`
+  node.value = this.tsParseType();
+
+  this.tsEatObjectTypeSemicolon();
+  return this.finishNode(node, "IndexSignature");
+};
+
+// XXX: flowObjectTypeSemicolon
+pp.tsEatObjectTypeSemicolon = function() {
+  if (!this.eat(tt.semi) && !this.eat(tt.comma) &&
+      !this.match(tt.braceR)) {
+    this.unexpected();
+  }
+};
+
 pp.tsParsePrimaryType = function() {
   const node = this.startNode();
   switch (this.state.type) {
     case tt.name:
       const identifier = this.parseIdentifier();
       return this.tsParsePredefinedType(node, identifier) || this.tsParseTypeReference(node, identifier);
+    case tt.braceL:
+      return this.tsParseObjectType();
   }
-}
+};
 
 pp.tsParseType = function() {
   return this.tsParsePrimaryType();
@@ -260,7 +330,6 @@ pp.tsParseType = function() {
   //    ArrayType
   //    TupleType
   //    TypeQuery
-  //    ThisType
   //
   //   ParenthesizedType:
   //    ( Type )
