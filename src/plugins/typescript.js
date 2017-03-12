@@ -338,8 +338,23 @@ pp.tsParsePrimaryType = function() {
   }
 };
 
+pp.tsParseMaybeArrayType = function() {
+  let type = this.tsParsePrimaryType();
+  // while loop, because we could have number[][]
+  while (!this.canInsertSemicolon() && this.match(tt.bracketL)) {
+    // XXX: fix node line start position /location
+    const node = this.startNode();
+    node.elementType = type;
+    this.expect(tt.bracketL);
+    this.expect(tt.bracketR);
+    // XXX: flow ArrayTypeAnnotation
+    type = this.finishNode(node, "ArrayType");
+  }
+  return type;
+};
+
 pp.tsParseType = function() {
-  return this.tsParsePrimaryType();
+  return this.tsParseMaybeArrayType();
   // should handle...
   //   Type:
   //    UnionOrIntersectionOrPrimaryType
