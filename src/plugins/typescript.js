@@ -390,16 +390,35 @@ pp.tsParseType = function() {
   //
   //   PrimaryType:
   //    ParenthesizedType
-  //    PredefinedType
-  //    TypeReference
-  //    ObjectType
-  //    ArrayType
-  //    TupleType
-  //    TypeQuery
+  //    PredefinedType - done
+  //    TypeReference - done
+  //    ObjectType - not done
+  //    ArrayType - done
+  //    TupleType - done
+  //    TypeQuery - done
+  //    ThisType - done
   //
   //   ParenthesizedType:
   //    ( Type )
 }
+
+pp.tsParseTypeAlias = function (node) {
+  node.id = this.tsParseTypeIdentifier();
+
+  if (this.isRelational("<")) {
+    node.typeParameters = this.tsParseTypeParameterList();
+  } else {
+    node.typeParameters = null;
+  }
+
+  // XXX: flow: `.right`, ts compiler: `.typeAnnotation`, though
+  // typeAnnotation seems like technically the wrong phrasing.
+  this.expect(tt.eq);
+  node.typeAnnotation = this.tsParseType();
+  this.semicolon();
+
+  return this.finishNode(node, "TypeAlias");
+};
 
 export default function (instance) {
   instance.extend("parseExpressionStatement", function (inner) {
@@ -408,6 +427,8 @@ export default function (instance) {
         if (this.match(tt.name)) {
           if (expr.name === "interface") {
             return this.tsParseInterface(node);
+          } else if (expr.name === "type") {
+            return this.tsParseTypeAlias(node);
           }
         }
       }
