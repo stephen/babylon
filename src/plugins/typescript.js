@@ -277,9 +277,11 @@ pp.tsParseObjectTypeIndexSignature = function() {
 
   // XXX: ts compiler calls this `type`, but
   // babylon uses type to mean the node's type.
-  // `key` is the flow terminology. (this is also
-  // inconsistent with `typeAnnotation` below...)
-  paramNode.key = this.tsParseType();
+  // flow calls this `key` (this is also
+  // inconsistent with `typeAnnotation` below...),
+  // and typescript-eslint-parser converts these into
+  // `typeAnnotation`
+  paramNode.typeAnnotation = this.tsParseType();
   if (["StringKeyword", "NumberKeyword"].indexOf(paramNode.key.type) === -1) {
     this.raise(paramNode.key.start, "Object indexer can only have string or number type");
   }
@@ -291,8 +293,10 @@ pp.tsParseObjectTypeIndexSignature = function() {
   this.expect(tt.colon); // XXX: flow handles this with flowParseTypeInitialiser
 
   // XXX: again, ts calls this `type`, but that overloads the word
-  // in babylon. flow calls this `value`
-  node.value = this.tsParseType();
+  // in babylon. flow calls this `value`.
+  // typescript-eslint-parser converts these into
+  // `typeAnnotation`
+  node.typeAnnotation = this.tsParseType();
 
   this.tsEatObjectTypeSemicolon();
   return this.finishNode(node, "IndexSignature");
