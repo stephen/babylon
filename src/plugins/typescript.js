@@ -4,40 +4,17 @@ import Parser from "../parser";
 
 // XXX: targeting ts1.8 grammar:
 // https://github.com/Microsoft/TypeScript/blob/master/doc/spec.md#A
-// attempt to copy words/identifiers from flow plugin where possible
 // also see https://github.com/babel/babylon/issues/320
 const pp = Parser.prototype;
 
-// pp.tsParseDeclareInterface = function (node) {
-//   this.next();
-//   this.flowParseInterfaceish(node);
-//   return this.finishNode(node, "DeclareInterface");
-// };
-//
-
 pp.tsParseInterface = function(node) {
-  //  InterfaceDeclaration:
-  //    interface BindingIdentifier TypeParametersopt InterfaceExtendsClauseopt ObjectType
-  //
-  //   InterfaceExtendsClause:
-  //    extends ClassOrInterfaceTypeList
-  //
-  //   ClassOrInterfaceTypeList:
-  //    ClassOrInterfaceType
-  //    ClassOrInterfaceTypeList , ClassOrInterfaceType
-  //
-  //   ClassOrInterfaceType:
-  //    TypeReference
-
   node.id = this.parseIdentifier();
 
-  // XXX: handle generics (TypeParameters), i.e. interface<T> A { ... }
   node.typeParameters = null;
   if (this.isRelational("<")) {
     node.typeParameters = this.tsParseTypeParameters();
   }
 
-  // XXX: handle InterfaceExtendsClause
   node.extends = [];
   if (this.eat(tt._extends)) {
     do {
@@ -85,7 +62,7 @@ pp.tsParseHeritageClause = function() {
 //
 // We can't just call pp.parseExprSubscripts because it also attempts to
 // parse things like a[c] which are valid MemberExpression's, but not
-// valid typescript. type names.
+// valid typescript type names.
 //
 // This is taken from flowParseQualifiedTypeIdentifier.
 pp.tsParseTypeName = function(identifier) {
@@ -137,18 +114,6 @@ pp.tsParseTypeParameters = function() {
   return parameters;
 };
 
-const strictModeReservedWords = [
-  "implements",
-  "interface",
-  "let",
-  "package",
-  "private",
-  "protected",
-  "public",
-  "static",
-  "yield",
-];
-
 const typeIdentifierReservedWords = [
   "any",
   "boolean",
@@ -173,9 +138,9 @@ pp.tsParseTypeParameter = function() {
   const node = this.startNode();
   node.name = this.tsParseTypeIdentifier();
 
-  // XXX: flow calls this bounded polymorphism
-  // https://github.com/Microsoft/TypeScript/blob/master/doc/spec.md#7
-  // and the flow plugin calls this .typeAnnotation.
+  // XXX: https://github.com/Microsoft/TypeScript/blob/master/doc/spec.md#7
+  // flow calls the possible `extends` clause bounded polymorphism
+  // and the flow plugin calls just a .typeAnnotation.
   // See: flowParseTypeAnnotatableIdentifier + flowParseTypeParameter
   node.constraint = null;
   if (this.isContextual("extends")) {
@@ -236,7 +201,7 @@ pp.tsParseObjectType = function() {
   const nodeStart = this.startNode();
   this.expect(tt.braceL);
 
-  // flow splits this into callProperties, properties, and indexers, but
+  // flow splits this into callProperties, properties, and indexers.
   // the TS compiler puts them into a single property
   nodeStart.members = [];
 
@@ -278,12 +243,8 @@ pp.tsParseObjectTypeIndexSignature = function() {
   paramNode.name = this.parseIdentifier();
   this.expect(tt.colon);
 
-  // XXX: ts compiler calls this `type`, but
-  // babylon uses type to mean the node's type.
-  // flow calls this `key` (this is also
-  // inconsistent with `typeAnnotation` below...),
-  // and typescript-eslint-parser converts these into
-  // `typeAnnotation`
+  // XXX: ts compiler `type`
+  // flow calls this `key`
   paramNode.typeAnnotation = this.tsParseType();
   if (["StringKeyword", "NumberKeyword"].indexOf(paramNode.key.type) === -1) {
     this.raise(paramNode.key.start, "Object indexer can only have string or number type");
@@ -295,10 +256,8 @@ pp.tsParseObjectTypeIndexSignature = function() {
   this.expect(tt.bracketR);
   this.expect(tt.colon); // XXX: flow handles this with flowParseTypeInitialiser
 
-  // XXX: again, ts calls this `type`, but that overloads the word
-  // in babylon. flow calls this `value`.
-  // typescript-eslint-parser converts these into
-  // `typeAnnotation`
+  // XXX: ts compiler `type`
+  // flow calls this `value`
   node.typeAnnotation = this.tsParseType();
 
   this.tsEatObjectTypeSemicolon();
@@ -330,7 +289,7 @@ pp.tsParseTupleType = function(node) {
 
 pp.tsParseTypeQuery = function(node) {
   this.expect(tt._typeof);
-  // XXX: ts calls this FirstNode? flow calls this QualifiedTypeIdentifier,
+  // XXX: ts calls this FirstNode?
   // see notes on tsParseTypeName.
   node.exprName = this.tsParseTypeName();
   // XXX: TypeofTypeAnnotation
@@ -388,7 +347,7 @@ pp.tsParseType = function() {
   //    PrimaryType
   //
   //   PrimaryType:
-  //    ParenthesizedType
+  //    ParenthesizedType - not done
   //    PredefinedType - done
   //    TypeReference - done
   //    ObjectType - not done
@@ -411,7 +370,7 @@ pp.tsParseTypeAlias = function (node) {
   }
 
   // XXX: flow: `.right`, ts compiler: `.typeAnnotation`, though
-  // typeAnnotation seems like technically the wrong phrasing.
+  // typeAnnotation seems like the wrong phrasing.
   this.expect(tt.eq);
   node.typeAnnotation = this.tsParseType();
   this.semicolon();
@@ -436,7 +395,7 @@ export default function (instance) {
     };
   });
 
-  // parse flow type annotations on variable declarator heads - let foo: string = bar
+  // parse ts type annotations on variable declarator heads - let foo: string = bar
   instance.extend("parseVarHead", function (inner) {
     return function(decl) {
       inner.call(this, decl);
