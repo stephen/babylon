@@ -325,6 +325,15 @@ pp.tsParseTupleType = function(node) {
   return this.finishNode(node, "TupleType");
 };
 
+pp.tsParseTypeQuery = function(node) {
+  this.expect(tt._typeof);
+  // XXX: ts calls this FirstNode? flow calls this QualifiedTypeIdentifier,
+  // see notes on tsParseTypeName.
+  node.exprName = this.tsParseTypeName();
+  // XXX: TypeofTypeAnnotation
+  return this.finishNode(node, "TypeQuery");
+};
+
 pp.tsParsePrimaryType = function() {
   const node = this.startNode();
   switch (this.state.type) {
@@ -337,6 +346,8 @@ pp.tsParsePrimaryType = function() {
       // XXX: flow ThisTypeAnnotation
       this.expect(tt._this);
       return this.finishNode(node, "ThisType");
+    case tt._typeof:
+      return this.tsParseTypeQuery(node);
     case tt.bracketL:
       return this.tsParseTupleType(node);
   }
