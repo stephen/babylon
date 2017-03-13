@@ -156,6 +156,10 @@ const typeIdentifierReservedWords = [
   "number",
   "string",
   "symbol",
+  // XXX: note that using `void` in e.g. a TypeParameterList
+  // produces a different error in the ts compiler than the above:
+  // interface X<S, void> {}
+  "void",
 ];
 
 pp.tsParseTypeIdentifier = function(liberal) {
