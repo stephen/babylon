@@ -34,7 +34,7 @@ pp.tsParseInterface = function(node) {
   // XXX: handle generics (TypeParameters), i.e. interface<T> A { ... }
   node.typeParameters = null;
   if (this.isRelational("<")) {
-    node.typeParameters = this.tsParseTypeParameterList();
+    node.typeParameters = this.tsParseTypeParameters();
   }
 
   // XXX: handle InterfaceExtendsClause
@@ -121,21 +121,20 @@ pp.tsParseTypeArgumentList = function() {
 
 // via flowParseTypeParameterDeclaration.
 // From the spec: TypeParameters.
-pp.tsParseTypeParameterList = function() {
+pp.tsParseTypeParameters = function() {
   // XXX: inType?
-  const node = this.startNode();
-  node.params = [];
+  const parameters = [];
 
   this.expectRelational("<");
   do {
-    node.params.push(this.tsParseTypeParameter());
+    parameters.push(this.tsParseTypeParameter());
     if (!this.isRelational(">")) {
       this.expect(tt.comma);
     }
   } while (!this.isRelational(">"));
   this.expectRelational(">");
 
-  return this.finishNode(node, "TypeParameterList");
+  return parameters;
 };
 
 const strictModeReservedWords = [
@@ -406,7 +405,7 @@ pp.tsParseTypeAlias = function (node) {
   node.id = this.tsParseTypeIdentifier();
 
   if (this.isRelational("<")) {
-    node.typeParameters = this.tsParseTypeParameterList();
+    node.typeParameters = this.tsParseTypeParameters();
   } else {
     node.typeParameters = null;
   }
