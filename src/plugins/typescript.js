@@ -330,7 +330,89 @@ pp.tsParseMaybeArrayType = function() {
   return type;
 };
 
+const modifierMap = {
+  "public": "PublicKeyword",
+  "private": "PrivateKeyword",
+  "protected": "ProtectedKeyword",
+};
+
+pp.tsParseParameter = function() {
+  const node = this.startNode();
+
+  node.modifiers = null;
+  if (this.match(tt.name) && modifierMap[this.state.value]) {
+    const modifier = this.startNode();
+    this.next();
+    node.modifiers = [this.finishNode(modifier, modifierMap[this.state.value])];
+  }
+
+  if (this.eat(tt.braceL)) {
+    if (node.modifiers) {
+      this.raise(node.start, "Cannot use a accessibility modifier with a destructuring pattern");
+    }
+
+    node.name = this.parseObj(true); // isPattern = true
+  } else {
+    node.name = this.parseIdentifier();
+  }
+
+  if (this.match(tt.question)) {
+    const questionNode = this.startNode();
+    this.expect(tt.question);
+    node.questionToken = this.finishNode(questionNode, "QuestionToken");
+  }
+
+  if (this.eat(tt.colon)) {
+    // XXX: support string literal type checking
+    node.typeAnnotation = this.tsParseType();
+  }
+  // XXX: support parameter initializers...
+
+  // XXX: flow FunctionTypeParam
+  return this.finishNode(node, "Parameter");
+};
+
+// XXX: flowParseFunctionTypeParams
+pp.tsParseParameterList = function() {
+  const params = [];
+  while (!this.match(tt.parenR) && !this.match(tt.ellipsis)) {
+    params.push(this.tsParseParameter());
+    if (!this.match(tt.parenR)) {
+      this.expect(tt.comma);
+    }
+  }
+  if (this.eat(tt.ellipsis)) {
+    params.push(this.tsParseParameter());
+  }
+
+  // XXX: enforce ordering: required, optional, rest
+  return params;
+};
+
+pp.tsParseConstructorType = function() {
+  const node = this.startNode();
+  this.expect(tt._new);
+
+  node.typeParameters = null;
+  if (this.isRelational("<")) {
+    node.typeParameters = this.tsParseTypeParameters();
+  }
+
+  this.expect(tt.parenL);
+  node.parameters = this.tsParseParameterList();
+  this.expect(tt.parenR);
+  this.expect(tt.arrow);
+
+  node.typeAnnotation = this.tsParseType();
+
+  return this.finishNode(node, "ConstructorType");
+};
+
 pp.tsParseType = function() {
+  if (this.match(tt._new)) {
+    return this.tsParseConstructorType();
+  }
+
   return this.tsParseMaybeArrayType();
   // should handle...
   //   Type:
