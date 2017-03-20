@@ -389,10 +389,9 @@ pp.tsParseParameterList = function() {
   return params;
 };
 
-pp.tsParseConstructorType = function() {
-  const node = this.startNode();
-  this.expect(tt._new);
-
+// parse constructor type / function type signatures:
+// TypeParametersopt (ParameterList) => Type
+pp.tsParseFunctionish = function(node) {
   node.typeParameters = null;
   if (this.isRelational("<")) {
     node.typeParameters = this.tsParseTypeParameters();
@@ -405,12 +404,27 @@ pp.tsParseConstructorType = function() {
 
   node.typeAnnotation = this.tsParseType();
 
+  return node;
+};
+
+pp.tsParseConstructorType = function() {
+  const node = this.startNode();
+  this.expect(tt._new);
+  this.tsParseFunctionish(node);
   return this.finishNode(node, "ConstructorType");
+};
+
+pp.tsParseFunctionType = function() {
+  const node = this.startNode();
+  this.tsParseFunctionish(node);
+  return this.finishNode(node, "FunctionType");
 };
 
 pp.tsParseType = function() {
   if (this.match(tt._new)) {
     return this.tsParseConstructorType();
+  } else if (this.match(tt.parenL) || this.isRelational("<")) {
+    return this.tsParseFunctionType();
   }
 
   return this.tsParseMaybeArrayType();
