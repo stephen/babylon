@@ -214,7 +214,7 @@ pp.tsParseObjectType = function() {
     if (this.match(tt.bracketL)) {
       nodeStart.members.push(this.tsParseObjectTypeIndexSignature());
     } else if (this.match(tt._new)) {
-      nodeStart.members.push(this.tsParseObjectTypeConstructorSignature());
+      nodeStart.members.push(this.tsParseObjectTypeConstructSignature());
       break;
     }
   }
@@ -224,11 +224,31 @@ pp.tsParseObjectType = function() {
   return this.finishNode(nodeStart, "TypeLiteral");
 };
 
-pp.tsParseObjectTypeConstructorSignature = function() {
+// parse ConstructSignature / CallSignature:
+// TypeParameters ( ParameterList ) TypeAnnotation
+// new TypeParameters ( ParameterList ) TypeAnnotation
+pp.tsParseObjectTypeFunctionish = function(node) {
+  node.typeParameters = null;
+  if (this.isRelational("<")) {
+    node.typeParameters = this.tsParseTypeParameters();
+  }
+
+  this.expect(tt.parenL);
+  node.parameters = this.tsParseParameterList();
+  this.expect(tt.parenR);
+
+  // Lack of a colon annotates an implicit `any`.
+  if (this.eat(tt.colon)) {
+    node.typeAnnotation = this.tsParseType();
+  }
+
+  return node;
+};
+
+pp.tsParseObjectTypeConstructSignature = function() {
   const node = this.startNode();
   this.expect(tt._new);
-
-  // looks like: new <A, B>(A, c): B;
+  this.tsParseObjectTypeFunctionish(node);
   return this.finishNode(node, "ConstructSignature");
 };
 
