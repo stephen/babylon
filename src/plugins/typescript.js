@@ -216,6 +216,8 @@ pp.tsParseObjectType = function() {
     } else if (this.match(tt._new)) {
       nodeStart.members.push(this.tsParseObjectTypeConstructSignature());
       break;
+    } else if (this.match(tt.parenL) || this.isRelational("<")) {
+      nodeStart.members.push(this.tsParseObjectTypeCallSignature());
     }
   }
   this.expect(tt.braceR);
@@ -227,6 +229,9 @@ pp.tsParseObjectType = function() {
 // parse ConstructSignature / CallSignature:
 // TypeParameters ( ParameterList ) TypeAnnotation
 // new TypeParameters ( ParameterList ) TypeAnnotation
+// This is similar to tsParseFunctionish, except
+// the type annotation at the end is an optional
+// `: Type` instead of a required `=> Type`
 pp.tsParseObjectTypeFunctionish = function(node) {
   node.typeParameters = null;
   if (this.isRelational("<")) {
@@ -243,6 +248,12 @@ pp.tsParseObjectTypeFunctionish = function(node) {
   }
 
   return node;
+};
+
+pp.tsParseObjectTypeCallSignature = function() {
+  const node = this.startNode();
+  this.tsParseObjectTypeFunctionish(node);
+  return this.finishNode(node, "CallSignature");
 };
 
 pp.tsParseObjectTypeConstructSignature = function() {
