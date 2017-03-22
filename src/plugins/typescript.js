@@ -312,6 +312,12 @@ pp.tsParsePrimaryType = function() {
       return this.tsParseTypeQuery(node);
     case tt.bracketL:
       return this.tsParseTupleType(node);
+    case tt.parenL:
+      this.expect(tt.parenL);
+      // Discard `node` from above.
+      const type = this.tsParseType();
+      this.expect(tt.parenR);
+      return type;
   }
 };
 
@@ -445,8 +451,23 @@ pp.tsParseMaybeUnionType = function() {
 pp.tsParseType = function() {
   if (this.match(tt._new)) {
     return this.tsParseConstructorType();
-  } else if (this.match(tt.parenL) || this.isRelational("<")) {
+  } else if (this.isRelational("<")) {
     return this.tsParseFunctionType();
+  } else if (this.match(tt.parenL)) {
+    // The grammar is potentially ambiguous here,
+    // because a left paren could be
+    // - a grouped type: (number | string)[]
+    // - a function type: (x: number) => string;
+
+    // We attempt to first parse as a function type,
+    // and revert back the state if it fails. Later,
+    // tsParsePrimaryType will handle the parenthesized
+    const state = this.state.clone();
+    try {
+      return this.tsParseFunctionType();
+    } catch (err) {
+      this.state = state;
+    }
   }
 
   return this.tsParseMaybeUnionType();
@@ -465,7 +486,7 @@ pp.tsParseType = function() {
   //    PrimaryType
   //
   //   PrimaryType:
-  //    ParenthesizedType - not done
+  //    ParenthesizedType - done
   //    PredefinedType - done
   //    TypeReference - done
   //    ObjectType - not done
