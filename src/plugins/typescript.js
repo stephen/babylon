@@ -420,6 +420,28 @@ pp.tsParseFunctionType = function() {
   return this.finishNode(node, "FunctionType");
 };
 
+pp.tsParseMaybeIntersectionType = function() {
+  // `node` will be discarded if there is no intersection type
+  const node = this.startNode();
+  const type = this.tsParseMaybeArrayType();
+  node.types = [type];
+  while (this.eat(tt.bitwiseAND)) {
+    node.types.push(this.tsParseMaybeArrayType());
+  }
+  return node.types.length === 1 ? type : this.finishNode(node, "IntersectionType");
+};
+
+pp.tsParseMaybeUnionType = function() {
+  // `node` will be discarded if there is no union type
+  const node = this.startNode();
+  const type = this.tsParseMaybeIntersectionType();
+  node.types = [type];
+  while (this.eat(tt.bitwiseOR)) {
+    node.types.push(this.tsParseMaybeIntersectionType());
+  }
+  return node.types.length === 1 ? type : this.finishNode(node, "UnionType");
+};
+
 pp.tsParseType = function() {
   if (this.match(tt._new)) {
     return this.tsParseConstructorType();
@@ -427,7 +449,7 @@ pp.tsParseType = function() {
     return this.tsParseFunctionType();
   }
 
-  return this.tsParseMaybeArrayType();
+  return this.tsParseMaybeUnionType();
   // should handle...
   //   Type:
   //    UnionOrIntersectionOrPrimaryType
