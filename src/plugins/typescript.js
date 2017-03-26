@@ -219,7 +219,17 @@ pp.tsParseObjectTypeish = function(node) {
   // MethodSignature `name?: CallSignature`
   while (!this.match(tt.braceR)) {
     if (this.match(tt.bracketL)) {
-      node.members.push(this.tsParseObjectTypeIndexSignature());
+      // Attempt to parse as a property/method signature with a computed
+      // property name, e.g. `[Symbol.iterator]?(): number;`. If that fails,
+      // then attempt to parse as an index signature e.g. `[x: number]: string;`
+      const state = this.state.clone();
+      try {
+        node.members.push(this.tsParseObjectTypePropertyOrMethodSignature());
+      } catch (err) {
+        this.state = state;
+        node.members.push(this.tsParseObjectTypeIndexSignature());
+      }
+
     } else if (this.match(tt._new)) {
       node.members.push(this.tsParseObjectTypeConstructSignature());
     } else if (this.match(tt.parenL) || this.isRelational("<")) {
@@ -237,9 +247,10 @@ pp.tsParseObjectTypeish = function(node) {
 
 pp.tsParseObjectTypePropertyName = function() {
   // estree ObjectProperty. Flow babylon 6 does this wrong as an ObjectTypeIndexer
-  if (this.eat(tt.braceL)) {
+  if (this.eat(tt.bracketL)) {
     const node = this.startNode();
     node.expression = this.parseMaybeAssign();
+    this.expect(tt.bracketR);
     // babylon does not have a "ComputedPropertyName" node.
     // Instead, ObjectProperty (ObjectTypeProperty for flow,
     // PropertySignature for ts) has a `computed` field
