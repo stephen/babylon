@@ -22,9 +22,7 @@ pp.tsParseInterface = function(node) {
     } while (this.eat(tt.comma));
   }
 
-  // XXX: handle ObjectType
-  node.body = null;
-  console.log(node);
+  this.tsParseObjectTypeish(node);
 
   return this.finishNode(node, "InterfaceDeclaration");
 };
@@ -195,15 +193,24 @@ pp.tsParseTypeReference = function(node, identifier) {
   return this.finishNode(node, "TypeReference");
 };
 
+// existingNode used for Interface declaration parsing
+// since `members` is directly on the InterfaceDeclaration node.
+// otherwise, it's an object TypeLiteral, i.e. var x: { y: string; ... };
 pp.tsParseObjectType = function() {
   // XXX: inType?
+  const node = this.startNode();
+  this.tsParseObjectTypeish(node);
 
-  const nodeStart = this.startNode();
+  // XXX: flow ObjectTypeAnnotation
+  return this.finishNode(node, "TypeLiteral");
+};
+
+pp.tsParseObjectTypeish = function(node) {
   this.expect(tt.braceL);
 
   // flow splits this into callProperties, properties, and indexers.
   // the TS compiler puts them into a single property
-  nodeStart.members = [];
+  node.members = [];
 
   // PropertySignature `name?: TypeAnnotation`
   // CallSignature `<A, B>(a, b): T`
@@ -212,21 +219,20 @@ pp.tsParseObjectType = function() {
   // MethodSignature `name?: CallSignature`
   while (!this.match(tt.braceR)) {
     if (this.match(tt.bracketL)) {
-      nodeStart.members.push(this.tsParseObjectTypeIndexSignature());
+      node.members.push(this.tsParseObjectTypeIndexSignature());
     } else if (this.match(tt._new)) {
-      nodeStart.members.push(this.tsParseObjectTypeConstructSignature());
+      node.members.push(this.tsParseObjectTypeConstructSignature());
     } else if (this.match(tt.parenL) || this.isRelational("<")) {
-      nodeStart.members.push(this.tsParseObjectTypeCallSignature());
+      node.members.push(this.tsParseObjectTypeCallSignature());
     } else if (this.match(tt.name)) {
-      nodeStart.members.push(this.tsParseObjectTypePropertyOrMethodSignature());
+      node.members.push(this.tsParseObjectTypePropertyOrMethodSignature());
     } else {
       this.unexpected();
     }
   }
   this.expect(tt.braceR);
 
-  // XXX: ObjectTypeAnnotation
-  return this.finishNode(nodeStart, "TypeLiteral");
+  return node;
 };
 
 pp.tsParseObjectTypePropertyName = function() {
@@ -583,7 +589,7 @@ pp.tsParseTypeAlias = function (node) {
 };
 
 export default function (instance) {
-  instance.extend("parseExpressionStatement", function (inner) {
+  instance.extend("parseExpressionStatement", function(inner) {
     return function(node, expr) {
       if (expr.type === "Identifier") {
         if (this.match(tt.name)) {
@@ -600,7 +606,7 @@ export default function (instance) {
   });
 
   // parse ts type annotations on variable declarator heads - let foo: string = bar
-  instance.extend("parseVarHead", function (inner) {
+  instance.extend("parseVarHead", function(inner) {
     return function(decl) {
       inner.call(this, decl);
       if (this.eat(tt.colon)) {
