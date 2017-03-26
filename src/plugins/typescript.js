@@ -215,15 +215,72 @@ pp.tsParseObjectType = function() {
       nodeStart.members.push(this.tsParseObjectTypeIndexSignature());
     } else if (this.match(tt._new)) {
       nodeStart.members.push(this.tsParseObjectTypeConstructSignature());
-      break;
     } else if (this.match(tt.parenL) || this.isRelational("<")) {
       nodeStart.members.push(this.tsParseObjectTypeCallSignature());
+    } else if (this.match(tt.name)) {
+      nodeStart.members.push(this.tsParseObjectTypePropertyOrMethodSignature());
+    } else {
+      this.unexpected();
     }
   }
   this.expect(tt.braceR);
 
   // XXX: ObjectTypeAnnotation
   return this.finishNode(nodeStart, "TypeLiteral");
+};
+
+pp.tsParseObjectTypePropertyName = function() {
+  // estree ObjectProperty. Flow babylon 6 does this wrong as an ObjectTypeIndexer
+  if (this.eat(tt.braceL)) {
+    const node = this.startNode();
+    node.expression = this.parseMaybeAssign();
+    // babylon does not have a "ComputedPropertyName" node.
+    // Instead, ObjectProperty (ObjectTypeProperty for flow,
+    // PropertySignature for ts) has a `computed` field
+    // that speifies whether or not it's computed, and the
+    // assignment expression is directly on that node as `key`.
+    // We cannot follow that pattern while also preserving TS
+    // PropertySignature.
+    //
+    // Also, this node can only be a well-known Symbol
+    // within types.
+    return this.finishNode(node, "ComputedPropertyName");
+  }
+
+  switch (this.state.type) {
+    case tt.num:
+      return this.parseLiteral(this.state.value, "NumericLiteral");
+    case tt.string:
+      return this.parseLiteral(this.state.value, "StringLiteral");
+    case tt.name:
+      return this.parseIdentifier(true);
+    default:
+      this.unexpected();
+  }
+};
+
+pp.tsParseObjectTypePropertyOrMethodSignature = function() {
+  const node = this.startNode();
+  let nodeType = "PropertySignature";
+  // need to parse PropertyName, which can be computed
+  // is TS: computed names can only be well defined symbols
+  node.name = this.tsParseObjectTypePropertyName();
+
+  if (this.match(tt.question)) {
+    const questionNode = this.startNode();
+    this.expect(tt.question);
+    node.questionToken = this.finishNode(questionNode, "QuestionToken");
+  }
+
+  if (this.isRelational("<") || this.match(tt.parenL)) {
+    nodeType = "MethodSignature";
+    this.tsParseObjectTypeFunctionish(node);
+  } else if (this.eat(tt.colon)) {
+    node.typeAnnotation = this.tsParseType();
+  }
+
+  this.tsEatObjectTypeSemicolon();
+  return this.finishNode(node, nodeType);
 };
 
 // parse ConstructSignature / CallSignature:
@@ -253,6 +310,7 @@ pp.tsParseObjectTypeFunctionish = function(node) {
 pp.tsParseObjectTypeCallSignature = function() {
   const node = this.startNode();
   this.tsParseObjectTypeFunctionish(node);
+  this.tsEatObjectTypeSemicolon();
   return this.finishNode(node, "CallSignature");
 };
 
@@ -260,6 +318,7 @@ pp.tsParseObjectTypeConstructSignature = function() {
   const node = this.startNode();
   this.expect(tt._new);
   this.tsParseObjectTypeFunctionish(node);
+  this.tsEatObjectTypeSemicolon();
   return this.finishNode(node, "ConstructSignature");
 };
 
@@ -277,8 +336,8 @@ pp.tsParseObjectTypeIndexSignature = function() {
   // XXX: ts compiler `type`
   // flow calls this `key`
   paramNode.typeAnnotation = this.tsParseType();
-  if (["StringKeyword", "NumberKeyword"].indexOf(paramNode.key.type) === -1) {
-    this.raise(paramNode.key.start, "Object indexer can only have string or number type");
+  if (["StringKeyword", "NumberKeyword"].indexOf(paramNode.typeAnnotation.type) === -1) {
+    this.raise(paramNode.typeAnnotation.start, "Object indexer can only have string or number type");
   }
 
   // XXX: flow does not have this level of indirection. the parameters live
