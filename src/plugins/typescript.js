@@ -552,6 +552,7 @@ pp.tsParseType = function() {
     // We attempt to first parse as a function type,
     // and revert back the state if it fails. Later,
     // tsParsePrimaryType will handle the parenthesized
+    // type case.
     const state = this.state.clone();
     try {
       return this.tsParseFunctionType();
@@ -561,32 +562,6 @@ pp.tsParseType = function() {
   }
 
   return this.tsParseMaybeUnionType();
-  // should handle...
-  //   Type:
-  //    UnionOrIntersectionOrPrimaryType
-  //    FunctionType
-  //    ConstructorType
-  //
-  //   UnionOrIntersectionOrPrimaryType:
-  //    UnionType
-  //    IntersectionOrPrimaryType
-  //
-  //   IntersectionOrPrimaryType:
-  //    IntersectionType
-  //    PrimaryType
-  //
-  //   PrimaryType:
-  //    ParenthesizedType - done
-  //    PredefinedType - done
-  //    TypeReference - done
-  //    ObjectType - not done
-  //    ArrayType - done
-  //    TupleType - done
-  //    TypeQuery - done
-  //    ThisType - done
-  //
-  //   ParenthesizedType:
-  //    ( Type )
 }
 
 pp.tsParseTypeAlias = function (node) {
@@ -598,7 +573,7 @@ pp.tsParseTypeAlias = function (node) {
     node.typeParameters = null;
   }
 
-  // XXX: flow: `.right`, ts compiler: `.typeAnnotation`, though
+  // XXX: flow: `.right`, ts compiler: `.type`, though
   // typeAnnotation seems like the wrong phrasing.
   this.expect(tt.eq);
   node.typeAnnotation = this.tsParseType();
