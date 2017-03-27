@@ -141,8 +141,7 @@ pp.tsParseTypeParameter = function() {
   // and the flow plugin calls just a .typeAnnotation.
   // See: flowParseTypeAnnotatableIdentifier + flowParseTypeParameter
   node.constraint = null;
-  if (this.isContextual("extends")) {
-    this.next();
+  if (this.eat(tt._extends)) {
     node.constraint = this.tsParseType();
   }
 
