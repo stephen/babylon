@@ -681,4 +681,48 @@ export default function (instance) {
       return inner.call(this, refShorthandDefaultPos);
     };
   });
+
+  // parse type parameters for function  decl + expr,
+  // i.e. `function compare<T>(x: T): number { ... }`
+  instance.extend("parseFunctionParams", function(inner) {
+    return function(node) {
+      node.typeParameters = null;
+      if (this.isRelational("<")) {
+        node.typeParameters = this.tsParseTypeParameters();
+      }
+
+      inner.call(this, node);
+    };
+  });
+
+  // parse return types for function  decl + expr
+  instance.extend("parseFunctionBody", function (inner) {
+    return function(node, allowExpression) {
+      if (this.match(tt.colon) && !allowExpression) {
+        // if allowExpression is true then we're parsing an arrow function and if
+        // there's a return type then it's been handled elsewhere
+        node.typeAnnotation = this.flowParseTypeAndPredicateAnnotation();
+      }
+
+      return inner.call(this, node, allowExpression);
+    };
+  });
+
+  // parse parameter list type annotations for function decl + expr,
+  // i.e. `function s(x: number) { ... }`
+  instance.extend("parseAssignableListItemTypes", function () {
+    return function (param) {
+      if (this.match(tt.question)) {
+        const questionNode = this.startNode();
+        this.expect(tt.question);
+        param.questionToken = this.finishNode(questionNode, "QuestionToken");
+      }
+
+      if (this.eat(tt.colon)) {
+        param.typeAnnotation = this.tsParseType();
+      }
+
+      return this.finishNode(param, param.type);
+    };
+  });
 }
