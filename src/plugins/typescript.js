@@ -245,7 +245,7 @@ pp.tsParseObjectTypeish = function(node) {
   return node;
 };
 
-pp.tsParseObjectTypePropertyName = function() {
+pp.tsParsePropertyName = function() {
   // estree ObjectProperty. Flow babylon 6 does this wrong as an ObjectTypeIndexer
   if (this.eat(tt.bracketL)) {
     const node = this.startNode();
@@ -281,7 +281,7 @@ pp.tsParseObjectTypePropertyOrMethodSignature = function() {
   let nodeType = "PropertySignature";
   // need to parse PropertyName, which can be computed
   // is TS: computed names can only be well defined symbols
-  node.name = this.tsParseObjectTypePropertyName();
+  node.name = this.tsParsePropertyName();
 
   if (this.match(tt.question)) {
     const questionNode = this.startNode();
@@ -599,6 +599,45 @@ pp.tsParseTypeAlias = function (node) {
   return this.finishNode(node, "TypeAlias");
 };
 
+pp.tsParseEnum = function() {
+  const node = this.startNode();
+
+  if (this.match(tt.name) && this.state.value === "enum") {
+    this.next();
+  } else {
+    this.unexpected();
+  }
+
+  node.name = this.tsParseTypeIdentifier();
+
+  node.members = [];
+  this.expect(tt.braceL);
+  while (!this.match(tt.braceR)) {
+    node.members.push(this.tsParseEnumMember());
+    if (!this.match(tt.braceR)) {
+      this.eat(tt.comma);
+    }
+  }
+  this.expect(tt.braceR);
+
+  return this.finishNode(node, "EnumDeclaration");
+};
+
+pp.tsParseEnumMember = function() {
+  const node = this.startNode();
+
+  node.name = this.tsParsePropertyName();
+  if (node.name.type === "ComputedPropertyName") {
+    this.raise(node.name.start, "Enum property name cannot be a computed property");
+  }
+
+  if (this.eat(tt.eq)) {
+    node.initializer = this.parseMaybeAssign();
+  }
+
+  return this.finishNode(node, "EnumMember");
+};
+
 export default function (instance) {
   instance.extend("parseExpressionStatement", function(inner) {
     return function(node, expr) {
@@ -626,6 +665,21 @@ export default function (instance) {
         decl.id.typeAnnotation = this.tsParseType();
         this.finishNode(decl.id, decl.id.type);
       }
+    };
+  });
+
+  // parse ts enums. Need to override here instead of
+  // at parseExpressionStatement because parseExprAtom
+  // attempts to parse the identifier (enum) which is a
+  // reserved word.
+  instance.extend("parseExprAtom", function(inner) {
+    return function(refShorthandDefaultPos) {
+      if (this.match(tt.name)) {
+        if (this.state.value === "enum") {
+          return this.tsParseEnum();
+        }
+      }
+      return inner.call(this, refShorthandDefaultPos);
     };
   });
 }
