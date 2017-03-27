@@ -696,7 +696,7 @@ export default function (instance) {
   });
 
   // parse return types for function  decl + expr
-  instance.extend("parseFunctionBody", function (inner) {
+  instance.extend("parseFunctionBody", function(inner) {
     return function(node, allowExpression) {
       if (this.match(tt.colon) && !allowExpression) {
         // if allowExpression is true then we're parsing an arrow function and if
@@ -710,8 +710,8 @@ export default function (instance) {
 
   // parse parameter list type annotations for function decl + expr,
   // i.e. `function s(x: number) { ... }`
-  instance.extend("parseAssignableListItemTypes", function () {
-    return function (param) {
+  instance.extend("parseAssignableListItemTypes", function() {
+    return function(param) {
       if (this.match(tt.question)) {
         const questionNode = this.startNode();
         this.expect(tt.question);
@@ -723,6 +723,23 @@ export default function (instance) {
       }
 
       return this.finishNode(param, param.type);
+    };
+  });
+
+  // parse type assertions, i.e. var x = <string>y;
+  instance.extend("parseMaybeUnary", function(inner) {
+    return function(refShorthandDefaultPos) {
+      // XXX(TODO): this parsing is not done for .tsx files.
+      if (this.isRelational("<")) {
+        const node = this.startNode();
+        this.next();
+        node.typeAnnotation = this.tsParseType();
+        this.expectRelational(">");
+        node.expression = inner.call(this, refShorthandDefaultPos);
+        return this.finishNode(node, "TypeAssertionExpression");
+      }
+
+      return inner.call(this, refShorthandDefaultPos);
     };
   });
 }
