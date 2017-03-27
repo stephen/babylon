@@ -742,4 +742,21 @@ export default function (instance) {
       return inner.call(this, refShorthandDefaultPos);
     };
   });
+
+  // parse type assertion (as expression) as a binary expression,
+  // i.e. `var x = 5 as number;`
+  // also see: https://github.com/Microsoft/TypeScript/pull/3564/files
+  instance.extend("parseExprOp", function(inner) {
+    return function(left, leftStartPos, leftStartLoc, minPrec, noIn) {
+      const expr = inner.call(this, left, leftStartPos, leftStartLoc, minPrec, noIn);
+      if (this.match(tt.name) && this.state.value === "as") {
+        const asExpr = this.startNode();
+        this.next();
+        asExpr.typeAnnotation = this.tsParseType();
+        asExpr.expression = expr;
+        return this.finishNode(asExpr, "AsExpression");
+      }
+      return expr;
+    };
+  });
 }
