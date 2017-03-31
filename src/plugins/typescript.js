@@ -300,11 +300,11 @@ pp.tsParseObjectTypePropertyOrMethodSignature = function() {
 };
 
 // parse ConstructSignature / CallSignature:
-// TypeParameters ( ParameterList ) TypeAnnotation
-// new TypeParameters ( ParameterList ) TypeAnnotation
-// This is similar to tsParseFunctionish, except
-// the type annotation at the end is an optional
-// `: Type` instead of a required `=> Type`
+// TypeParameters (ParameterList) TypeAnnotation
+// new TypeParameters (ParameterList) TypeAnnotation
+// This is similar to tsParseFunctionish, except
+// the type annotation at the end is an optional
+// `: Type` instead of a required `=> Type`
 pp.tsParseObjectTypeFunctionish = function(node) {
   node.typeParameters = null;
   if (this.isRelational("<")) {
@@ -502,7 +502,7 @@ pp.tsParseParameterList = function() {
 };
 
 // parse constructor type / function type signatures:
-// TypeParametersopt (ParameterList) => Type
+// TypeParameters (ParameterList) => Type
 pp.tsParseFunctionish = function(node) {
   node.typeParameters = null;
   if (this.isRelational("<")) {
@@ -578,7 +578,7 @@ pp.tsParseType = function() {
   }
 
   return this.tsParseMaybeUnionType();
-}
+};
 
 pp.tsParseTypeAlias = function (node) {
   node.id = this.tsParseTypeIdentifier();
