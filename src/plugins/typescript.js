@@ -759,4 +759,38 @@ export default function (instance) {
       return expr;
     };
   });
+
+  instance.extend("parseSubscript", function(inner) {
+    return function(base, startPos, startLoc, noCalls) {
+      // const state = this.state.clone();
+      if (!noCalls && this.isRelational("<")) {
+        const node = this.startNodeAt(startPos, startLoc);
+        node.typeArguments = this.tsParseTypeArgumentList();
+
+        const possibleAsync = (
+          this.state.potentialArrowAt === base.start &&
+          base.type === "Identifier" &&
+          base.name === "async" &&
+          !this.canInsertSemicolon()
+        );
+
+        this.next();
+
+        node.callee = base;
+        node.arguments = this.parseCallExpressionArguments(tt.parenR, possibleAsync);
+        if (node.callee.type === "Import" && node.arguments.length !== 1) {
+          this.raise(node.start, "import() requires exactly one argument");
+        }
+        base = this.finishNode(node, "CallExpression");
+
+        if (possibleAsync && this.shouldParseAsyncArrow()) {
+          return this.parseAsyncArrowFromCallExpression(this.startNodeAt(startPos, startLoc), node);
+        } else {
+          this.toReferencedList(node.arguments);
+        }
+      }
+
+      return inner.call(this, base, startPos, startLoc, noCalls);
+    };
+  });
 }

@@ -279,51 +279,61 @@ pp.parseExprSubscripts = function (refShorthandDefaultPos) {
 
 pp.parseSubscripts = function (base, startPos, startLoc, noCalls) {
   for (;;) {
-    if (!noCalls && this.eat(tt.doubleColon)) {
-      const node = this.startNodeAt(startPos, startLoc);
-      node.object = base;
-      node.callee = this.parseNoCallExpr();
-      return this.parseSubscripts(this.finishNode(node, "BindExpression"), startPos, startLoc, noCalls);
-    } else if (this.eat(tt.dot)) {
-      const node = this.startNodeAt(startPos, startLoc);
-      node.object = base;
-      node.property = this.parseIdentifier(true);
-      node.computed = false;
-      base = this.finishNode(node, "MemberExpression");
-    } else if (this.eat(tt.bracketL)) {
-      const node = this.startNodeAt(startPos, startLoc);
-      node.object = base;
-      node.property = this.parseExpression();
-      node.computed = true;
-      this.expect(tt.bracketR);
-      base = this.finishNode(node, "MemberExpression");
-    } else if (!noCalls && this.match(tt.parenL)) {
-      const possibleAsync = this.state.potentialArrowAt === base.start && base.type === "Identifier" && base.name === "async" && !this.canInsertSemicolon();
-      this.next();
-
-      const node = this.startNodeAt(startPos, startLoc);
-      node.callee = base;
-      node.arguments = this.parseCallExpressionArguments(tt.parenR, possibleAsync);
-      if (node.callee.type === "Import" && node.arguments.length !== 1) {
-        this.raise(node.start, "import() requires exactly one argument");
-      }
-      base = this.finishNode(node, "CallExpression");
-
-      if (possibleAsync && this.shouldParseAsyncArrow()) {
-        return this.parseAsyncArrowFromCallExpression(this.startNodeAt(startPos, startLoc), node);
-      } else {
-        this.toReferencedList(node.arguments);
-      }
-    } else if (this.match(tt.backQuote)) {
-      const node = this.startNodeAt(startPos, startLoc);
-      node.tag = base;
-      node.quasi = this.parseTemplate(true);
-      base = this.finishNode(node, "TaggedTemplateExpression");
+    const [rv, next] = this.parseSubscript(base, startPos, startLoc, noCalls);
+    if (rv) {
+      return rv;
     } else {
-      return base;
+      base = next;
     }
   }
 };
+
+pp.parseSubscript = function (base, startPos, startLoc, noCalls) {
+  if (!noCalls && this.eat(tt.doubleColon)) {
+    const node = this.startNodeAt(startPos, startLoc);
+    node.object = base;
+    node.callee = this.parseNoCallExpr();
+    return [this.parseSubscripts(this.finishNode(node, "BindExpression"), startPos, startLoc, noCalls)];
+  } else if (this.eat(tt.dot)) {
+    const node = this.startNodeAt(startPos, startLoc);
+    node.object = base;
+    node.property = this.parseIdentifier(true);
+    node.computed = false;
+    base = this.finishNode(node, "MemberExpression");
+  } else if (this.eat(tt.bracketL)) {
+    const node = this.startNodeAt(startPos, startLoc);
+    node.object = base;
+    node.property = this.parseExpression();
+    node.computed = true;
+    this.expect(tt.bracketR);
+    base = this.finishNode(node, "MemberExpression");
+  } else if (!noCalls && this.match(tt.parenL)) {
+    const possibleAsync = this.state.potentialArrowAt === base.start && base.type === "Identifier" && base.name === "async" && !this.canInsertSemicolon();
+    this.next();
+
+    const node = this.startNodeAt(startPos, startLoc);
+    node.callee = base;
+    node.arguments = this.parseCallExpressionArguments(tt.parenR, possibleAsync);
+    if (node.callee.type === "Import" && node.arguments.length !== 1) {
+      this.raise(node.start, "import() requires exactly one argument");
+    }
+    base = this.finishNode(node, "CallExpression");
+
+    if (possibleAsync && this.shouldParseAsyncArrow()) {
+      return [this.parseAsyncArrowFromCallExpression(this.startNodeAt(startPos, startLoc), node)];
+    } else {
+      this.toReferencedList(node.arguments);
+    }
+  } else if (this.match(tt.backQuote)) {
+    const node = this.startNodeAt(startPos, startLoc);
+    node.tag = base;
+    node.quasi = this.parseTemplate(true);
+    base = this.finishNode(node, "TaggedTemplateExpression");
+  } else {
+    return [base];
+  }
+  return [null, base];
+}
 
 pp.parseCallExpressionArguments = function (close, possibleAsyncArrow) {
   const elts = [];
