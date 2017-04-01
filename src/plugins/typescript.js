@@ -762,32 +762,39 @@ export default function (instance) {
 
   instance.extend("parseSubscript", function(inner) {
     return function(base, startPos, startLoc, noCalls) {
-      // const state = this.state.clone();
-      if (!noCalls && this.isRelational("<")) {
-        const node = this.startNodeAt(startPos, startLoc);
-        node.typeArguments = this.tsParseTypeArgumentList();
+      const state = this.state.clone();
+      try {
+        // Attempt to parse as a call expression with type
+        // arguments, but go on if this fails.
+        // i.e. class s extends k<X>() vs. class s extends K<T>
+        if (!noCalls && this.isRelational("<")) {
+          const node = this.startNodeAt(startPos, startLoc);
+          node.typeArguments = this.tsParseTypeArgumentList();
 
-        const possibleAsync = (
-          this.state.potentialArrowAt === base.start &&
-          base.type === "Identifier" &&
-          base.name === "async" &&
-          !this.canInsertSemicolon()
-        );
+          const possibleAsync = (
+            this.state.potentialArrowAt === base.start &&
+            base.type === "Identifier" &&
+            base.name === "async" &&
+            !this.canInsertSemicolon()
+          );
 
-        this.next();
+          this.next();
 
-        node.callee = base;
-        node.arguments = this.parseCallExpressionArguments(tt.parenR, possibleAsync);
-        if (node.callee.type === "Import" && node.arguments.length !== 1) {
-          this.raise(node.start, "import() requires exactly one argument");
+          node.callee = base;
+          node.arguments = this.parseCallExpressionArguments(tt.parenR, possibleAsync);
+          if (node.callee.type === "Import" && node.arguments.length !== 1) {
+            this.raise(node.start, "import() requires exactly one argument");
+          }
+          base = this.finishNode(node, "CallExpression");
+
+          if (possibleAsync && this.shouldParseAsyncArrow()) {
+            return this.parseAsyncArrowFromCallExpression(this.startNodeAt(startPos, startLoc), node);
+          } else {
+            this.toReferencedList(node.arguments);
+          }
         }
-        base = this.finishNode(node, "CallExpression");
-
-        if (possibleAsync && this.shouldParseAsyncArrow()) {
-          return this.parseAsyncArrowFromCallExpression(this.startNodeAt(startPos, startLoc), node);
-        } else {
-          this.toReferencedList(node.arguments);
-        }
+      } catch (err) {
+        this.state = state;
       }
 
       return inner.call(this, base, startPos, startLoc, noCalls);
