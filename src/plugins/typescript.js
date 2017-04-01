@@ -452,10 +452,11 @@ pp.tsParseParameter = function() {
   const node = this.startNode();
 
   node.modifiers = null;
-  if (this.match(tt.name) && modifierMap[this.state.value]) {
+  const maybeModifierValue = this.state.value;
+  if (this.match(tt.name) && modifierMap[maybeModifierValue]) {
     const modifier = this.startNode();
     this.next();
-    node.modifiers = [this.finishNode(modifier, modifierMap[this.state.value])];
+    node.modifiers = [this.finishNode(modifier, modifierMap[maybeModifierValue])];
   }
 
   if (this.eat(tt.braceL)) {
@@ -705,6 +706,24 @@ export default function (instance) {
       }
 
       return inner.call(this, node, allowExpression);
+    };
+  });
+
+  // attempt to parse function parameter modifiers,
+  // i.e. function s(public x) {}
+  instance.extend("parseMaybeDefault", function (inner) {
+    return function (...args) {
+      const maybeModifierValue = this.state.value;
+      if (this.match(tt.name) && modifierMap[maybeModifierValue] && this.lookahead().type === tt.name) {
+        const modifier = this.startNode();
+        this.next();
+        const modifiers = [this.finishNode(modifier, modifierMap[maybeModifierValue])];
+
+        const node = inner.apply(this, args);
+        node.modifiers = modifiers;
+        return node;
+      }
+      return inner.apply(this, args);
     };
   });
 
