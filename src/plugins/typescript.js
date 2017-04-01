@@ -800,4 +800,14 @@ export default function (instance) {
       return inner.call(this, base, startPos, startLoc, noCalls);
     };
   });
+
+  // Classes
+  instance.extend("parseClassId", function(inner) {
+    return function(node) {
+      inner.apply(this, arguments);
+      if (this.isRelational("<")) {
+        node.typeParameters = this.tsParseTypeParameters();
+      }
+    };
+  });
 }
