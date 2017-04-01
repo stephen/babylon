@@ -810,4 +810,39 @@ export default function (instance) {
       }
     };
   });
+
+  instance.extend("parseClassSuper", function(inner) {
+    return function(node, isStatement) {
+      inner.call(this, node, isStatement);
+      if (node.superClass && this.isRelational("<")) {
+        // XXX: this is what flow does, but not TS compiler.
+        // We might want to stick with what flow does here instead of
+        // follow ts' HeritageClause, since it lets the rest of the
+        // class declaration follow estree a little closer.
+        // however... (see below)
+        node.superTypeParameters = this.tsParseTypeParameters();
+      }
+
+      // this part gets murky because it's not part of
+      // estree. Here, we could go back to following ts compiler's
+      // heritage clauses, but the asymmetry is unfortunate.
+      if (this.isContextual("implements")) {
+        this.next();
+
+        const heritageNode = this.startNode();
+
+        const implemented = node.implements = [];
+        do {
+          const node = this.startNode();
+          node.id = this.tsParseTypeIdentifier();
+          if (this.isRelational("<")) {
+            node.typeParameters = this.tsParseTypeParameters();
+          } else {
+            node.typeParameters = null;
+          }
+          implemented.push(this.finishNode(node, "ClassImplements"));
+        } while (this.eat(tt.comma));
+      }
+    };
+  });
 }
