@@ -879,4 +879,22 @@ export default function (instance) {
       }
     }
   });
+
+  instance.extend("parseClassMethod", function(inner) {
+    return function(classBody, method, ...args) {
+      if (this.isRelational("<")) {
+        method.typeParameters = this.tsParseTypeParameters();
+      }
+
+      inner.call(this, classBody, method, ...args);
+    };
+  });
+
+  // also allow type parameters in front of class methods,
+  // i.e. `class X { length<T>() {} }`
+  instance.extend("isClassMethod", function(inner) {
+    return function() {
+      return this.isRelational("<") || inner.call(this);
+    };
+  });
 }
