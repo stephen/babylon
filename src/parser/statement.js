@@ -672,6 +672,9 @@ pp.parseClassBody = function (node) {
       decorators = [];
     }
 
+    // hook for typescript parsing
+    this.maybeParseClassElementModifier(method);
+
     method.static = false;
     if (this.match(tt.name) && this.state.value === "static") {
       const key = this.parseIdentifier(true); // eats 'static'
@@ -768,6 +771,11 @@ pp.parseClassBody = function (node) {
 
   this.state.strict = oldStrict;
 };
+
+// Used by typescript to parse public/protected/private
+pp.maybeParseClassElementModifier = function (node) {
+  return node;
+}
 
 pp.parseClassProperty = function (node) {
   const noPluginMsg = "You can only use Class Properties when the 'classProperties' plugin is enabled.";

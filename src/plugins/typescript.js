@@ -868,4 +868,15 @@ export default function (instance) {
       }
     };
   });
+
+  instance.extend("maybeParseClassElementModifier", function() {
+    return function(node) {
+      const maybeModifierValue = this.state.value;
+      if (this.tsIsModifierKeyword()) {
+        const modifier = this.startNode();
+        this.next();
+        node.modifiers = [this.finishNode(modifier, modifierMap[maybeModifierValue])];
+      }
+    }
+  });
 }
