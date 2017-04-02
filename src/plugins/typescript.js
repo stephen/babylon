@@ -448,12 +448,16 @@ const modifierMap = {
   "protected": "ProtectedKeyword",
 };
 
+pp.tsIsModifierKeyword = function() {
+  return this.match(tt.name) && modifierMap[this.state.value];
+};
+
 pp.tsParseParameter = function() {
   const node = this.startNode();
 
   node.modifiers = null;
   const maybeModifierValue = this.state.value;
-  if (this.match(tt.name) && modifierMap[maybeModifierValue]) {
+  if (this.tsIsModifierKeyword()) {
     const modifier = this.startNode();
     this.next();
     node.modifiers = [this.finishNode(modifier, modifierMap[maybeModifierValue])];
@@ -714,7 +718,7 @@ export default function (instance) {
   instance.extend("parseMaybeDefault", function (inner) {
     return function (...args) {
       const maybeModifierValue = this.state.value;
-      if (this.match(tt.name) && modifierMap[maybeModifierValue] && this.lookahead().type === tt.name) {
+      if (this.tsIsModifierKeyword()) {
         const modifier = this.startNode();
         this.next();
         const modifiers = [this.finishNode(modifier, modifierMap[maybeModifierValue])];
