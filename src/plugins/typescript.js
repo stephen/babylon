@@ -852,8 +852,6 @@ export default function (instance) {
       if (this.isContextual("implements")) {
         this.next();
 
-        const heritageNode = this.startNode();
-
         const implemented = node.implements = [];
         do {
           const node = this.startNode();
@@ -877,7 +875,7 @@ export default function (instance) {
         this.next();
         node.modifiers = [this.finishNode(modifier, modifierMap[maybeModifierValue])];
       }
-    }
+    };
   });
 
   instance.extend("parseClassMethod", function(inner) {

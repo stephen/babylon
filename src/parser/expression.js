@@ -333,7 +333,7 @@ pp.parseSubscript = function (base, startPos, startLoc, noCalls) {
     return [base];
   }
   return [null, base];
-}
+};
 
 pp.parseCallExpressionArguments = function (close, possibleAsyncArrow) {
   const elts = [];

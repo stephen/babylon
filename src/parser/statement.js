@@ -775,7 +775,7 @@ pp.parseClassBody = function (node) {
 // Used by typescript to parse public/protected/private
 pp.maybeParseClassElementModifier = function (node) {
   return node;
-}
+};
 
 pp.parseClassProperty = function (node) {
   const noPluginMsg = "You can only use Class Properties when the 'classProperties' plugin is enabled.";
